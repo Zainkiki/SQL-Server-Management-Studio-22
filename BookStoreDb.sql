@@ -1,0 +1,256 @@
+---- Create a new database with the name "BookStoreDb"
+--CREATE DATABASE BookStoreDb
+--GO
+
+---- Use the new database for the following commands
+USE BookStoreDb
+GO
+
+
+--If changes are required, all tables can be dropped
+--DROP TABLE IF EXISTS Books;
+--DROP TABLE IF EXISTS Authors;
+--DROP TABLE IF EXISTS Countries;
+
+-- Create three new tables:
+
+-- Normally all tables MUST have a primary key, 
+-- but in this demo it is up to you to decide (as it is a part of a server tool test)
+-- Note: This first tabel can be created by Flat file import 
+-- Remember to check/change datatypes
+
+--CREATE TABLE Countries
+--(
+--	CountryCode CHAR(2) NOT NULL,
+--	Country VARCHAR(75)
+--)
+--GO
+
+-- Or Import data from a file like Contries.csv
+
+-- Create a simpel table for Authors
+--CREATE TABLE Authors
+--(
+--	AuthorID INT NOT NULL,
+--	FirstName VARCHAR(50),
+--	LastName VARCHAR(50),
+--	CountryCode CHAR(2),
+--	DateChanged DATETIME DEFAULT GETDATE()
+--)
+--GO
+
+---- In order to view the new tabel, rigth-click Tables and refresh!
+
+---- It is also possible to insert data with the BULK import command:
+---- Remember to create a csv-file first (with ALL columns in it)
+--BULK INSERT Countries
+--FROM 'C:\Users\temp\Desktop\country_Code.txt'
+--WITH (
+--	FIRSTROW = 2,
+--	FIELDTERMINATOR = ';',
+--	ROWTERMINATOR = '\n'
+--);
+
+BULK INSERT Authors
+FROM 'C:\Users\temp\Desktop\mock_data.txt'
+WITH (
+	FIRSTROW = 2,
+	FIELDTERMINATOR = ',',
+	ROWTERMINATOR = '\n'
+);
+
+---- Use the select command to view all the new data i the table
+--SELECT * FROM Authors;
+
+---- Check the last ID in the tabel
+--SELECT TOP(1) * FROM Authors
+--ORDER BY AuthorID DESC;
+
+---- Create a simpel table for book data
+--CREATE Table Books
+--(
+--	BookID INT NOT NULL,
+--	AuthorID INT NOT NULL,
+--	Title VARCHAR(75) NOT NULL,
+--	Price SMALLMONEY,
+--	Edition SMALLINT DEFAULT 1,
+--	PublishedDate DATE DEFAULT GETDATE()
+--)
+--GO
+
+---- Ditto with books and the BULK import command:
+--BULK INSERT Books
+--FROM 'C:\Users\annl\Downloads\Book_data.csv'
+--WITH (
+--	FORMAT = 'CSV',
+--	FIRSTROW = 2,
+--	FIELDTERMINATOR = ';',
+--	ROWTERMINATOR = '\n'
+--);
+
+---- Check the last ID in the tabel
+--SELECT TOP(1) * FROM Books
+--ORDER BY BookID DESC;
+
+--==================================================================
+-- In order learn more about indexes you need lots and lots of data
+-- Generate lots of data for Auhthors:
+-- Note: If you are working with some other tables, use the script as a model for your design
+DECLARE @RandVal INT;				-- Random character
+DECLARE @Cnt INT;					-- Random lenght of string
+DECLARE @Id INT;					-- Author id
+DECLARE @OK BIT;					-- Check if Country code ok
+DECLARE @CharLst VARCHAR(53);		-- List of letters
+DECLARE @Firstname VARCHAR(50);	-- Variable Author firstname
+DECLARE @Lastname VARCHAR(50);	-- Variable Author lastname
+DECLARE @Code VARCHAR(2);			-- Variable Country code
+DECLARE @StartDate AS DATETIME;	-- First date for date changed
+DECLARE @EndDate AS DATETIME;		-- Last date for date changed
+DECLARE @NewDate AS DATETIME;		-- Variable Author date changed
+
+--This is in order to create random text string
+SET @CharLst = 'abcdefghijklmnopqrstvvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ'; -- All letters + space (lower case & capital)
+
+SET @StartDate = '01/01/2019 08:02:13';	-- Choosen first date
+SET @EndDate = GETDATE();					-- Todays date and time
+DECLARE @Seconds INT = DATEDIFF(SECOND, @StartDate, @EndDate);	-- Get a range in seconds between these two dates
+
+--Note: If there already is data in the tabel, set @Id to last value + 1 (ex. 3001)
+SET @Id = 1;	-- First Author id. 
+
+-- Remember to monitor while generating data (250.000 Authors)
+WHILE @Id <= 250000
+BEGIN
+	SET @Firstname = '';		-- Clear all variables first
+	SET @Lastname = '';
+	SET @Code = '';
+
+	-- Random firstname:
+	SET @Cnt = FLOOR(RAND()*25+5);	-- Random length of name
+	WHILE @Cnt > 0
+	BEGIN
+		SET @RandVal = FLOOR(RAND()*52+1);
+		SET @Firstname = @Firstname + SUBSTRING(@CharLst, @RandVal, 1);
+		SET @Cnt = @Cnt - 1;
+	END
+
+	-- Random lastname: Same procedure as firstname
+	SET @Cnt = FLOOR(RAND()*35+5);
+	WHILE @Cnt > 0
+	BEGIN
+		SET @RandVal = FLOOR(RAND()*52+1);
+		SET @Lastname = @Lastname + SUBSTRING(@CharLst, @RandVal, 1);
+		SET @Cnt = @Cnt - 1;
+	END
+
+	-- Random Country from the list of contries
+	SET @OK = 0;		-- Used to check if code is OK
+	WHILE @OK = 0
+	BEGIN
+		SET @Code = '';
+		SET @Cnt = 2;
+		WHILE @Cnt > 0
+		BEGIN
+			SET @RandVal = FLOOR(RAND()*52+1);
+			IF SUBSTRING(@CharLst, @RandVal, 1) <> ' '
+			BEGIN
+				SET @Code = @Code + UPPER(SUBSTRING(@CharLst, @RandVal, 1));
+				SET @Cnt = @Cnt - 1;
+			END
+		END
+
+		--PRINT 'Country = ' + @Country; -- This was a check while building the code
+		IF EXISTS(SELECT * FROM Countries WHERE CountryCode = @Code)
+			SET @OK = 1;	-- Wait for the right combination of letters
+		--ELSE
+		--	PRINT 'Wrong Country!'	-- Part of testing the code
+	END
+
+	-- Random date & time generated by seconds
+	SET @NewDate = DATEADD(SECOND, ROUND(((@Seconds-1) * RAND()), 0), @StartDate);
+
+	-- Finally insert all the new values in the tabel
+	INSERT INTO Authors VALUES (@Id, @Firstname, @Lastname, @Code, @NewDate);
+
+	-- Generate the next Id
+	SET @Id = @Id + 1;
+	--PRINT @Id;	-- Part of testing the code
+END
+GO
+
+--==================================================================
+-- Generate data for books
+DECLARE @CharLst VARCHAR(53);		-- List of letters
+DECLARE @Id INT;					-- Book id
+DECLARE @RandomAuthorId INT;		-- Variable id for Author 
+DECLARE @RandomTitle VARCHAR(75);	-- Variable Book title
+DECLARE @RandomPrice SMALLMONEY;	-- Variable Book price
+DECLARE @RandomEdition TINYINT;		-- Variable Book edition
+DECLARE @RandVal INT;				-- Random character
+DECLARE @Cnt INT;					-- Random lenght of string
+
+DECLARE @LowerLimitForAuthorId INT;	-- Lowest Author id (1)
+DECLARE @UpperLimitForAuthorId INT;	-- Higest Author id (Number of records in the tabel)
+
+DECLARE @LowerLimitForPrice INT;	-- Lowest book price
+DECLARE @UpperLimitForPrice INT;	-- Maximum book price
+
+DECLARE @LowerLimitForEdition TINYINT;	-- Book Edition restrictions
+DECLARE @UpperLimitForEdition TINYINT;
+
+DECLARE @StartDate AS date;
+DECLARE @EndDate AS date;
+DECLARE @NewDate AS date;
+
+SET @StartDate = '01/01/2019';	-- Some historic date
+SET @EndDate = GETDATE();		-- Todays date & time
+
+SET @CharLst = 'abcdefghijklmnopqrstvvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ'; -- All letters + space (lower case & capital)
+
+SET @LowerLimitForAuthorId = 1;			-- First Author Id
+SET @UpperLimitForAuthorId = 250000;	-- Maximum must match the maximum number of Authors
+
+SET @LowerLimitForPrice = 75;			-- For more realistic data set limits
+SET @UpperLimitForPrice = 1000; 
+
+SET @LowerLimitForEdition = 1;
+SET @UpperLimitForEdition = 10;
+
+SET @Id = 1;	-- First Book id. Note: In this case there is already 6000 in the tabel (imported from Excel)
+---- Remember to monitor while generating data
+---- Note: This script can take awhile depenting on how many books you insert
+WHILE @Id <= 1000000
+Begin 
+	-- Random Author id based on upper & lower limits
+	SELECT @RandomAuthorId = Round(((@UpperLimitForAuthorId - @LowerLimitForAuthorId) * Rand()) + @LowerLimitForAuthorId, 0)
+
+	-- Random book titel, mixed letters & length
+	SET @RandomTitle = '';
+	SET @Cnt = FLOOR(RAND()*35+5);
+	WHILE @Cnt > 0
+	BEGIN
+		SET @RandVal = FLOOR(RAND()*52+1);
+		IF (SUBSTRING(@CharLst, @RandVal, 1) <> ' ' OR @RandomTitle <> '')
+		BEGIN
+			SET @RandomTitle = @RandomTitle + SUBSTRING(@CharLst, @RandVal, 1);
+			SET @Cnt = @Cnt - 1;
+		END;
+	END
+
+	-- Random price based on upper & lower limits
+	SELECT @RandomPrice = Round(((@UpperLimitForPrice - @LowerLimitForPrice) * Rand()) + @LowerLimitForPrice, 2);
+	
+	-- Random book edition based on upper & lower limits
+	SELECT @RandomEdition = Round(((@UpperLimitForEdition - @LowerLimitForEdition) * Rand()) + @LowerLimitForEdition, 0);
+	
+	-- Random book published date based on start & stop date
+	SET @NewDate = DATEADD(DAY, RAND(CHECKSUM(NEWID()))*(1+DATEDIFF(DAY, @StartDate, @EndDate)),@StartDate);
+
+	INSERT INTO Books VALUES (@Id, @RandomAuthorId, @RandomTitle, @RandomPrice, @RandomEdition, @NewDate)
+	--PRINT @count	-- Part of testing code
+	SET @Id = @Id + 1
+END
+GO
+
+-- Congratulation - you are now ready to test your new design with SQL Server Profiler and Database Engine Tuning Advisor
+--==================================================================
