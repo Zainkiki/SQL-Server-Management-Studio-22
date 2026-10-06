@@ -11,8 +11,8 @@ GO
 
 DROP TABLE IF EXISTS selling.orderItems;
 DROP TABLE IF EXISTS selling.buyOrders;
-DROP TABLE IF EXISTS selling.kunder;
 DROP TABLE IF EXISTS selling.postNr;
+DROP TABLE IF EXISTS selling.kunder;
 DROP TABLE IF EXISTS selling.saelger;
 DROP TABLE IF EXISTS production.productSpecifications;
 DROP TABLE IF EXISTS production.specifications;
@@ -30,29 +30,37 @@ GO
 CREATE SCHEMA selling;
 GO
 
-CREATE TABLE selling.kunder (
-    Customer_id INT IDENTITY(1,1) PRIMARY KEY,
-    First_name VARCHAR(20) NOT NULL,
-    Last_name VARCHAR(20) NOT NULL,
-    Phone INT CHECK (Phone > 9999999 AND Phone < 100000000) NOT NULL,
-    Email VARCHAR(75) NOT NULL,
-    Gade VARCHAR(50) NOT NULL,
-    PostNr INT CHECK (PostNr > 99 AND PostNr < 10000) NOT NULL
+CREATE TABLE selling.postNr (
+PostNr SMALLINT PRIMARY KEY,
+ByNavn NVARCHAR(75) NOT NULL
 );
 GO
 
-CREATE TABLE selling.postNr (
-    PostNr SMALLINT PRIMARY KEY,
-    ByNavn NVARCHAR(75) NOT NULL
+CREATE TABLE selling.kunder (
+Customer_id INT IDENTITY(1,1) PRIMARY KEY,
+First_name VARCHAR(20) NOT NULL,
+Last_name VARCHAR(20) NOT NULL,
+Phone INT CHECK (Phone > 9999999 AND Phone < 100000000) NOT NULL,
+Email VARCHAR(75) NOT NULL,
+Gade VARCHAR(50) NOT NULL,
+PostNr SMALLINT CHECK (PostNr > 99 AND PostNr < 10000) NOT NULL,
+
+CONSTRAINT FK_kunder_postNr
+FOREIGN KEY (PostNr)
+REFERENCES selling.postNr(PostNr)
 );
 GO
 
 CREATE TABLE selling.saelger (
-    Saelger_id INT IDENTITY(1,1) PRIMARY KEY,
-    Virksomhedsnavn VARCHAR(100) NOT NULL,
-    CVR INT CHECK (CVR > 9999999 AND CVR < 100000000) NOT NULL,
-    Gade VARCHAR(50) NOT NULL,
-    PostNr INT CHECK (PostNr > 999 AND PostNr < 10000) NOT NULL
+Saelger_id INT IDENTITY(1,1) PRIMARY KEY,
+Virksomhedsnavn VARCHAR(100) NOT NULL,
+CVR INT CHECK (CVR > 9999999 AND CVR < 100000000) NOT NULL,
+Gade VARCHAR(50) NOT NULL,
+PostNr SMALLINT CHECK (PostNr > 999 AND PostNr < 10000) NOT NULL,
+
+CONSTRAINT FK_saelger_postNr
+FOREIGN KEY (PostNr)
+REFERENCES selling.postNr(PostNr)
 );
 GO
 
